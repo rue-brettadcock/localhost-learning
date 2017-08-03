@@ -1,108 +1,88 @@
-// Copyright 2010 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
 package main
 
 import (
 	"database/sql"
-	"html/template"
-	"io/ioutil"
 	"net/http"
-	"regexp"
 
 	_ "github.com/go-sql-driver/mysql"
+	"golang.org/x/crypto/bcrypt"
 )
 
-// Page represents a webpage's data
-type Page struct {
-	Title string
-	Body  []byte
-}
+var db *sql.DB
+var err error
 
-func (p *Page) save() error {
-	filename := p.Title + ".txt"
-	return ioutil.WriteFile(filename, p.Body, 0600)
-}
-
-func loadPage(title string) (*Page, error) {
-	filename := title + ".txt"
-	body, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	return &Page{Title: title, Body: body}, nil
-}
-
-func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
-	p, err := loadPage(title)
-	if err != nil {
-		http.Redirect(w, r, "/edit/"+title, http.StatusFound)
+func signupPage(res http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.ServeFile(res, req, "html/signup.html")
 		return
 	}
-	renderTemplate(w, "view", p)
-}
 
-func editHandler(w http.ResponseWriter, r *http.Request, title string) {
-	p, err := loadPage(title)
-	if err != nil {
-		p = &Page{Title: title}
-	}
-	renderTemplate(w, "edit", p)
-}
+	username := req.FormValue("username")
+	password := req.FormValue("password")
 
-func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
-	body := r.FormValue("body")
-	p := &Page{Title: title, Body: []byte(body)}
-	err := p.save()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	http.Redirect(w, r, "/view/"+title, http.StatusFound)
-}
+	var user string
 
-func defaultHandler(w http.ResponseWriter, r *http.Request) {
-	// r.ParseForm()       // parse arguments, you have to call this by yourself
-	// fmt.Println(r.Form) // print form information in server side
-	// fmt.Println("path", r.URL.Path)
-	// fmt.Println("scheme", r.URL.Scheme)
-	// fmt.Println(r.Form["url_long"])
-	// for k, v := range r.Form {
-	// 	fmt.Println("key:", k)
-	// 	fmt.Println("val:", strings.Join(v, ""))
-	// }
-	// fmt.Fprintf(w, "Brett's Local Webpage\n") // send data to client side
-	// fmt.Fprintf(w, "Path: %s", r.URL.Path[1:])
-	http.ServeFile(w, r, "index.html")
+	err := db.QueryRow("SELECT username FROM users WHERE username=?", username).Scan(&user)
 
-}
-
-var templates = template.Must(template.ParseFiles("edit.html", "view.html"))
-
-func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
-	err := templates.ExecuteTemplate(w, tmpl+".html", p)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
-
-func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		m := validPath.FindStringSubmatch(r.URL.Path)
-		if m == nil {
-			http.NotFound(w, r)
+	switch {
+	case err == sql.ErrNoRows:
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			http.Error(res, "Server error, unable to create your account.", 500)
 			return
 		}
-		fn(w, r, m[2])
+
+		_, err = db.Exec("INSERT INTO users(username, password) VALUES(?, ?)", username, hashedPassword)
+		if err != nil {
+			http.Error(res, "Server error, unable to create your account.", 500)
+			return
+		}
+
+		res.Write([]byte("User created!"))
+		return
+	case err != nil:
+		http.Error(res, "Server error, unable to create your account.", 500)
+		return
+	default:
+		http.Redirect(res, req, "/", 301)
 	}
+}
+
+func loginPage(res http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.ServeFile(res, req, "html/login.html")
+		return
+	}
+
+	username := req.FormValue("username")
+	password := req.FormValue("password")
+
+	var databaseUsername string
+	var databasePassword string
+
+	err := db.QueryRow("SELECT username, password FROM users WHERE username=?", username).Scan(&databaseUsername, &databasePassword)
+
+	if err != nil {
+		http.Redirect(res, req, "/login", 301)
+		return
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(databasePassword), []byte(password))
+	if err != nil {
+		http.Redirect(res, req, "/login", 301)
+		return
+	}
+
+	res.Write([]byte("Hello" + databaseUsername))
+
+}
+
+func homePage(res http.ResponseWriter, req *http.Request) {
+	http.ServeFile(res, req, "html/index.html")
 }
 
 func main() {
-
-	db, err := sql.Open("mysql", "dev:password@/localdb")
+	db, err = sql.Open("mysql", "dev:password@/localdb")
 	if err != nil {
 		panic(err.Error())
 	}
@@ -113,13 +93,8 @@ func main() {
 		panic(err.Error())
 	}
 
-	http.HandleFunc("/", defaultHandler)
-	//http.HandleFunc("/view/", makeHandler(viewHandler))
-	//http.HandleFunc("/edit/", makeHandler(editHandler))
-	//http.HandleFunc("/save/", makeHandler(saveHandler))
 	http.HandleFunc("/signup", signupPage)
-	http.HandleFunc("/login", .oginPage)
-
-	http.ListenAndServe(":9090", nil)
-
+	http.HandleFunc("/login", loginPage)
+	http.HandleFunc("/", homePage)
+	http.ListenAndServe(":8080", nil)
 }
