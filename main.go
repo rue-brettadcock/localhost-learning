@@ -1,17 +1,14 @@
 package main
 
 import (
-	"database/sql"
 	"net/http"
 
+	"./database"
+
 	_ "github.com/go-sql-driver/mysql"
-	"golang.org/x/crypto/bcrypt"
 )
 
-var db *sql.DB
-var err error
-
-func signupPage(res http.ResponseWriter, req *http.Request) {
+func signupPageHandler(res http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
 		http.ServeFile(res, req, "html/signup.html")
 		return
@@ -20,35 +17,21 @@ func signupPage(res http.ResponseWriter, req *http.Request) {
 	username := req.FormValue("username")
 	password := req.FormValue("password")
 
-	var user string
+	msg, err := database.SetUser(username, password)
 
-	err := db.QueryRow("SELECT username FROM users WHERE username=?", username).Scan(&user)
-
-	switch {
-	case err == sql.ErrNoRows:
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		if err != nil {
-			http.Error(res, "Server error, unable to create your account.", 500)
-			return
-		}
-
-		_, err = db.Exec("INSERT INTO users(username, password) VALUES(?, ?)", username, hashedPassword)
-		if err != nil {
-			http.Error(res, "Server error, unable to create your account.", 500)
-			return
-		}
-
-		res.Write([]byte("User created!"))
-		return
-	case err != nil:
-		http.Error(res, "Server error, unable to create your account.", 500)
-		return
-	default:
-		http.Redirect(res, req, "/", 301)
+	if err == true {
+		http.Error(res, msg, 500)
 	}
+	if msg != "" {
+		res.Write([]byte(msg))
+	} else {
+		http.Redirect(res, req, "/", 301)
+		return
+	}
+
 }
 
-func loginPage(res http.ResponseWriter, req *http.Request) {
+func loginPageHandler(res http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
 		http.ServeFile(res, req, "html/login.html")
 		return
@@ -57,23 +40,13 @@ func loginPage(res http.ResponseWriter, req *http.Request) {
 	username := req.FormValue("username")
 	password := req.FormValue("password")
 
-	var databaseUsername string
-	var databasePassword string
+	err := database.LoginUser(username, password)
 
-	err := db.QueryRow("SELECT username, password FROM users WHERE username=?", username).Scan(&databaseUsername, &databasePassword)
-
-	if err != nil {
+	if err != false {
 		http.Redirect(res, req, "/login", 301)
 		return
 	}
-
-	err = bcrypt.CompareHashAndPassword([]byte(databasePassword), []byte(password))
-	if err != nil {
-		http.Redirect(res, req, "/login", 301)
-		return
-	}
-
-	res.Write([]byte("Hello" + databaseUsername))
+	res.Write([]byte("Hello " + username))
 
 }
 
@@ -82,19 +55,13 @@ func homePage(res http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	db, err = sql.Open("mysql", "dev:password@/localdb")
-	if err != nil {
-		panic(err.Error())
-	}
-	defer db.Close()
 
-	err = db.Ping()
-	if err != nil {
-		panic(err.Error())
-	}
+	database.OpenDatabaseConnection()
+	defer database.CloseDatabaseConnection()
 
-	http.HandleFunc("/signup", signupPage)
-	http.HandleFunc("/login", loginPage)
 	http.HandleFunc("/", homePage)
+	http.HandleFunc("/login", loginPageHandler)
+	http.HandleFunc("/signup", signupPageHandler)
+
 	http.ListenAndServe(":8080", nil)
 }
