@@ -22,7 +22,7 @@ func (l *Logic) signupPage(res http.ResponseWriter, req *http.Request) {
 
 	msg, err := l.db.SetUser(username, password)
 
-	if err == true {
+	if err != false {
 		http.Error(res, msg, 500)
 	}
 	if msg != "" {
@@ -45,11 +45,18 @@ func (l *Logic) loginPage(res http.ResponseWriter, req *http.Request) {
 	err := l.db.LoginUser(username, password)
 
 	if err != false {
-		http.Redirect(res, req, "/login", 301)
-		return
+		http.Redirect(res, req, "/loginerror", 301)
 	}
+
 	res.Write([]byte("Hello " + username))
 
+}
+
+func (l *Logic) loginErrorPage(res http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.ServeFile(res, req, "html/loginerror.html")
+		return
+	}
 }
 
 func (l *Logic) homePage(res http.ResponseWriter, req *http.Request) {
@@ -69,6 +76,7 @@ func main() {
 	//http.HandleFunc("/", handle(homePage))
 	http.HandleFunc("/", l.homePage)
 	http.HandleFunc("/login", l.loginPage)
+	http.HandleFunc("/loginerror", l.loginErrorPage)
 	http.HandleFunc("/signup", l.signupPage)
 
 	http.ListenAndServe(":8080", nil)
