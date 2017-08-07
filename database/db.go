@@ -8,33 +8,42 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var db *sql.DB
-var err error
+type MyDb struct {
+	db *sql.DB
+}
+
+func New() MyDb {
+	m := MyDb{db: nil}
+	m.openDatabaseConnection()
+
+	return m
+}
 
 // Opens database connection
-func OpenDatabaseConnection() {
+func (s *MyDb) openDatabaseConnection() {
+	var err error
 
-	db, err = sql.Open("mysql", "dev:password@/localdb")
+	s.db, err = sql.Open("mysql", "dev:password@/localdb")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = db.Ping()
+	err = s.db.Ping()
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
 // closes database connection
-func CloseDatabaseConnection() {
-	db.Close()
+func (s *MyDb) closeDatabaseConnection() {
+	s.db.Close()
 }
 
 // Creates user in the mysql database
-func SetUser(username, password string) (string, bool) {
+func (s *MyDb) SetUser(username, password string) (string, bool) {
 
 	var user string
-	err := db.QueryRow("SELECT username FROM users WHERE username=?", username).Scan(&user)
+	err := s.db.QueryRow("SELECT username FROM users WHERE username=?", username).Scan(&user)
 
 	switch {
 	case err == sql.ErrNoRows:
@@ -43,7 +52,7 @@ func SetUser(username, password string) (string, bool) {
 			return "Server error, unable to create your account.", true
 		}
 
-		_, err = db.Exec("INSERT INTO users(username, password) VALUES(?, ?)", username, hashedPassword)
+		_, err = s.db.Exec("INSERT INTO users(username, password) VALUES(?, ?)", username, hashedPassword)
 		if err != nil {
 			return "Server error, unable to create your account.", true
 		}
@@ -57,12 +66,12 @@ func SetUser(username, password string) (string, bool) {
 }
 
 // Attemps to log user into the mysql database
-func LoginUser(username, password string) bool {
+func (s *MyDb) LoginUser(username, password string) bool {
 
 	var databaseUsername string
 	var databasePassword string
 
-	err := db.QueryRow("SELECT username, password FROM users WHERE username=?", username).Scan(&databaseUsername, &databasePassword)
+	err := s.db.QueryRow("SELECT username, password FROM users WHERE username=?", username).Scan(&databaseUsername, &databasePassword)
 	if err != nil {
 		return true
 	}
