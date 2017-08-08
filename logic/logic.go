@@ -9,7 +9,7 @@ import (
 )
 
 type Logic struct {
-	mydb database.MyDb
+	mydb *database.MyDb
 }
 
 func New() *Logic {

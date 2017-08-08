@@ -11,11 +11,11 @@ type MyDb struct {
 	db *sql.DB
 }
 
-func New() MyDb {
+func New() *MyDb {
 	m := MyDb{db: nil}
 	m.openDatabaseConnection()
 
-	return m
+	return &m
 }
 
 // Opens database connection
@@ -57,21 +57,3 @@ func (s *MyDb) CreateUser(username string, hashedPassword []byte) error {
 	_, err := s.db.Exec("INSERT INTO users(username, password) VALUES(?, ?)", username, hashedPassword)
 	return err
 }
-
-// // Attemps to log user into the mysql database
-// func (s *MyDb) LoginUser(username, password string) bool {
-
-// 	var databaseUsername string
-// 	var databasePassword string
-
-// 	err := s.db.QueryRow("SELECT username, password FROM users WHERE username=?", username).Scan(&databaseUsername, &databasePassword)
-// 	if err != nil {
-// 		return true
-// 	}
-
-// 	err = bcrypt.CompareHashAndPassword([]byte(databasePassword), []byte(password))
-// 	if err != nil {
-// 		return true
-// 	}
-// 	return false
-// }

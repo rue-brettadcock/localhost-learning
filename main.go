@@ -32,24 +32,24 @@ func (p *Presentation) signupPage(res http.ResponseWriter, req *http.Request) {
 
 }
 
-// func (p *Presentation) loginPage(res http.ResponseWriter, req *http.Request) {
-// 	if req.Method != "POST" {
-// 		http.ServeFile(res, req, "html/login.html")
-// 		return
-// 	}
+func (p *Presentation) loginPage(res http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.ServeFile(res, req, "html/login.html")
+		return
+	}
 
-// 	username := req.FormValue("username")
-// 	password := req.FormValue("password")
+	username := req.FormValue("username")
+	password := req.FormValue("password")
 
-// 	err := l.db.LoginUser(username, password)
+	err := p.logic.SignIn(username, password)
 
-// 	if err != false {
-// 		http.Redirect(res, req, "/loginerror", 301)
-// 	}
+	if err != false {
+		http.Redirect(res, req, "/loginerror", 301)
+	}
 
-// 	res.Write([]byte("Hello " + username))
+	res.Write([]byte("Hello " + username))
 
-// }
+}
 
 func (p *Presentation) loginErrorPage(res http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
@@ -73,10 +73,9 @@ func main() {
 	p := Presentation{logic: logic.New()}
 
 	//http.HandleFunc("/", handle(homePage))
-	http.HandleFunc("/", p.homePage)
-	//http.HandleFunc("/login", p.loginPage)
+	http.HandleFunc("/login", p.loginPage)
 	http.HandleFunc("/loginerror", p.loginErrorPage)
 	http.HandleFunc("/signup", p.signupPage)
-
+	http.HandleFunc("/", p.homePage)
 	http.ListenAndServe(":8080", nil)
 }
