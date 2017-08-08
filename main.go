@@ -3,15 +3,15 @@ package main
 import (
 	"net/http"
 
-	"./database"
+	"./logic"
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type Logic struct {
-	db database.MyDb
+type Presentation struct {
+	logic *logic.Logic
 }
 
-func (l *Logic) signupPage(res http.ResponseWriter, req *http.Request) {
+func (p *Presentation) signupPage(res http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
 		http.ServeFile(res, req, "html/signup.html")
 		return
@@ -20,12 +20,11 @@ func (l *Logic) signupPage(res http.ResponseWriter, req *http.Request) {
 	username := req.FormValue("username")
 	password := req.FormValue("password")
 
-	msg, err := l.db.SetUser(username, password)
+	msg, err := p.logic.Register(username, password)
 
 	if err != false {
 		http.Error(res, msg, 500)
-	}
-	if msg != "" {
+	} else if msg != "" {
 		res.Write([]byte(msg))
 		return
 	}
@@ -33,33 +32,33 @@ func (l *Logic) signupPage(res http.ResponseWriter, req *http.Request) {
 
 }
 
-func (l *Logic) loginPage(res http.ResponseWriter, req *http.Request) {
-	if req.Method != "POST" {
-		http.ServeFile(res, req, "html/login.html")
-		return
-	}
+// func (p *Presentation) loginPage(res http.ResponseWriter, req *http.Request) {
+// 	if req.Method != "POST" {
+// 		http.ServeFile(res, req, "html/login.html")
+// 		return
+// 	}
 
-	username := req.FormValue("username")
-	password := req.FormValue("password")
+// 	username := req.FormValue("username")
+// 	password := req.FormValue("password")
 
-	err := l.db.LoginUser(username, password)
+// 	err := l.db.LoginUser(username, password)
 
-	if err != false {
-		http.Redirect(res, req, "/loginerror", 301)
-	}
+// 	if err != false {
+// 		http.Redirect(res, req, "/loginerror", 301)
+// 	}
 
-	res.Write([]byte("Hello " + username))
+// 	res.Write([]byte("Hello " + username))
 
-}
+// }
 
-func (l *Logic) loginErrorPage(res http.ResponseWriter, req *http.Request) {
+func (p *Presentation) loginErrorPage(res http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
 		http.ServeFile(res, req, "html/loginerror.html")
 		return
 	}
 }
 
-func (l *Logic) homePage(res http.ResponseWriter, req *http.Request) {
+func (p *Presentation) homePage(res http.ResponseWriter, req *http.Request) {
 	http.ServeFile(res, req, "html/index.html")
 }
 
@@ -71,13 +70,13 @@ func handle(h http.Handler) http.Handler {
 
 func main() {
 
-	l := Logic{db: database.New()}
+	p := Presentation{logic: logic.New()}
 
 	//http.HandleFunc("/", handle(homePage))
-	http.HandleFunc("/", l.homePage)
-	http.HandleFunc("/login", l.loginPage)
-	http.HandleFunc("/loginerror", l.loginErrorPage)
-	http.HandleFunc("/signup", l.signupPage)
+	http.HandleFunc("/", p.homePage)
+	//http.HandleFunc("/login", p.loginPage)
+	http.HandleFunc("/loginerror", p.loginErrorPage)
+	http.HandleFunc("/signup", p.signupPage)
 
 	http.ListenAndServe(":8080", nil)
 }
