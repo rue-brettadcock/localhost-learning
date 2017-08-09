@@ -1,7 +1,10 @@
 package main
 
-import "./html"
+import "./service"
 
 func main() {
-	html.Start()
+	// toggle these two and the import statement to switch
+	// between html and cURL views
+	// html.Start()
+	service.ListenAndServe()
 }
