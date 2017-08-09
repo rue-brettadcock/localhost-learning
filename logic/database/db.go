@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"log"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -21,8 +22,10 @@ func New() *MyDb {
 // Opens database connection
 func (s *MyDb) openDatabaseConnection() {
 	var err error
+	time.Sleep(15 * time.Second)
+	// s.db, err = sql.Open("mysql", "dev:password@/localdb")
+	s.db, err = sql.Open("mysql", "root:root@tcp(db:3306)/userInformation")
 
-	s.db, err = sql.Open("mysql", "dev:password@/localdb")
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -6,7 +6,7 @@ import (
 
 	"goji.io/pat"
 
-	"../logic"
+	"github.com/rue-brettadcock/localhost-learning/logic"
 )
 
 type Presentation struct {
@@ -21,7 +21,7 @@ func echo(in string) string {
 	if in == "" {
 		in = "Empty URL path"
 	}
-	return fmt.Sprintf("Specified path: %s!\n", in)
+	return fmt.Sprintf("Specified path: %s", in)
 }
 
 func (p *Presentation) signupPage(res http.ResponseWriter, req *http.Request) {

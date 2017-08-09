@@ -3,7 +3,7 @@ package logic
 import (
 	"log"
 
-	"./database"
+	"github.com/rue-brettadcock/localhost-learning/logic/database"
 	"golang.org/x/crypto/bcrypt"
 )
 
