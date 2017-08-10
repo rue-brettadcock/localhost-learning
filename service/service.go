@@ -4,7 +4,7 @@ import (
 	"flag"
 	"net/http"
 
-	"../logic"
+	"github.com/rue-brettadcock/localhost-learning/logic"
 	"goji.io"
 	"goji.io/pat"
 )
@@ -23,7 +23,7 @@ func ListenAndServe() {
 	mux := goji.NewMux()
 
 	mux.HandleFunc(pat.Get("/signupPage/:username/:password"), handler.signupPage)
-	mux.HandleFunc(pat.Get("/homePage/:name"), handler.homePage)
 	mux.HandleFunc(pat.Get("/loginPage/:username/:password"), handler.loginPage)
+	mux.HandleFunc(pat.Get("/:name"), handler.homePage)
 	http.ListenAndServe(bindTo, mux)
 }

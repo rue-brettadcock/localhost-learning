@@ -1,6 +1,6 @@
 package main
 
-import "./service"
+import "github.com/rue-brettadcock/localhost-learning/service"
 
 func main() {
 	// toggle these two and the import statement to switch
